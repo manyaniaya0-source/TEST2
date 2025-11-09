@@ -57,195 +57,65 @@ matrice_decision_df = st.data_editor(df_input, use_container_width=True)
 matrice_decision = matrice_decision_df.values
 
 # ==================== SECTION 2: AHP HIÉRARCHIQUE ====================
-st.header("⚖️ Étape 2 : Méthode AHP Hiérarchique")
+st.set_page_config(page_title="Calcul AHP", layout="wide")
+
+st.title("🌟 Application AHP - Pondération des critères")
+
 st.markdown("""
-**Échelle de Saaty :** 1=Égal, 3=Modérément important, 5=Fortement important, 
-7=Très fortement important, 9=Extrêmement important
+Cette application permet de **calculer les poids AHP** à partir d'une **matrice de comparaison personnalisée**.
+Entrez vos valeurs (entre 1 et 9, ou leur inverse 1/x) dans la matrice ci-dessous.
 """)
 
-# ==================== MATRICE 1: Comparaison des 3 Facettes (A, B, C) ====================
-st.subheader("🔢 Matrice 1 : Comparaison des Facettes (A, B, C)")
-st.markdown("**A = Product satisfaction, B = Supply innovation capability, C = Service level**")
+# ----------------------------
+# 1️⃣ Saisie du nombre de critères
+# ----------------------------
+n = st.number_input("Nombre de critères :", min_value=2, max_value=10, value=3, step=1)
 
-facettes = ["A: Product satisfaction", "B: Supply innovation", "C: Service level"]
-matrice_facettes = np.ones((3, 3))
+# Noms des critères
+criteres = [f"C{i+1}" for i in range(n)]
 
-col1, col2, col3 = st.columns(3)
-with col1:
-    val_AB = st.number_input(
-        "A vs B",
-        min_value=0.111, max_value=9.0, value=1.0, step=0.5,
-        key="facet_AB",
-        help="Quelle est l'importance de A par rapport à B?"
-    )
-    matrice_facettes[0, 1] = val_AB
-    matrice_facettes[1, 0] = 1 / val_AB
+st.subheader("🧩 Matrice de comparaison par paires")
 
-with col2:
-    val_AC = st.number_input(
-        "A vs C",
-        min_value=0.111, max_value=9.0, value=1.0, step=0.5,
-        key="facet_AC"
-    )
-    matrice_facettes[0, 2] = val_AC
-    matrice_facettes[2, 0] = 1 / val_AC
+# Création d’une matrice identité par défaut
+matrice = np.ones((n, n))
 
-with col3:
-    val_BC = st.number_input(
-        "B vs C",
-        min_value=0.111, max_value=9.0, value=1.0, step=0.5,
-        key="facet_BC"
-    )
-    matrice_facettes[1, 2] = val_BC
-    matrice_facettes[2, 1] = 1 / val_BC
-
-# Afficher la matrice complète
-st.markdown("**Matrice de comparaison par paires (Facettes) :**")
-df_mat_facettes = pd.DataFrame(matrice_facettes, 
-                               index=["A", "B", "C"], 
-                               columns=["A", "B", "C"])
-st.dataframe(df_mat_facettes.style.format("{:.3f}"), use_container_width=True)
-
-# Calcul des poids des facettes
-somme_col_facettes = matrice_facettes.sum(axis=0)
-matrice_facettes_norm = matrice_facettes / somme_col_facettes
-poids_facettes = matrice_facettes_norm.mean(axis=1)
-
-st.markdown("**✅ Poids des facettes :**")
-df_facettes = pd.DataFrame({
-    'Facette': ["A", "B", "C"],
-    'Poids': poids_facettes
-})
-st.dataframe(df_facettes.style.format({'Poids': '{:.4f}'}))
-
-st.markdown("---")
-
-# ==================== MATRICE 2: Comparaison C1, C2, C3 (Composantes de A) ====================
-st.subheader("🔢 Matrice 2 : Comparaison des Critères de A (C₁, C₂, C₃)")
-st.markdown("**C₁: Qualified products (%), C₂: Product price ($1000), C₃: Market share (%)**")
-
-matrice_groupe1 = np.ones((3, 3))
-col1, col2, col3 = st.columns(3)
-with col1:
-    g1_12 = st.number_input("C₁ vs C₂", 0.111, 9.0, 1.0, 0.5, key="g1_12")
-    matrice_groupe1[0, 1] = g1_12
-    matrice_groupe1[1, 0] = 1 / g1_12
-with col2:
-    g1_13 = st.number_input("C₁ vs C₃", 0.111, 9.0, 1.0, 0.5, key="g1_13")
-    matrice_groupe1[0, 2] = g1_13
-    matrice_groupe1[2, 0] = 1 / g1_13
-with col3:
-    g1_23 = st.number_input("C₂ vs C₃", 0.111, 9.0, 1.0, 0.5, key="g1_23")
-    matrice_groupe1[1, 2] = g1_23
-    matrice_groupe1[2, 1] = 1 / g1_23
+# Entrée des valeurs par l'utilisateur
+for i in range(n):
+    for j in range(i + 1, n):
+        val = st.number_input(
+            f"Importance de {criteres[i]} par rapport à {criteres[j]}",
+            min_value=0.111, max_value=9.0, value=1.0, step=0.1,
+            key=f"m_{i}_{j}"
+        )
+        matrice[i, j] = val
+        matrice[j, i] = round(1 / val, 4)
 
 # Afficher la matrice
-st.markdown("**Matrice de comparaison par paires (Groupe A) :**")
-df_mat_g1 = pd.DataFrame(matrice_groupe1, 
-                         index=["C₁", "C₂", "C₃"], 
-                         columns=["C₁", "C₂", "C₃"])
-st.dataframe(df_mat_g1.style.format("{:.3f}"), use_container_width=True)
+st.write("### Matrice de comparaison :")
+df_matrice = pd.DataFrame(matrice, columns=criteres, index=criteres)
+st.dataframe(df_matrice, use_container_width=True)
 
-poids_local_g1 = (matrice_groupe1 / matrice_groupe1.sum(axis=0)).mean(axis=1)
+# ----------------------------
+# 2️⃣ Calcul des poids AHP
+# ----------------------------
+if st.button("Calculer les poids AHP"):
+    # Normalisation des colonnes
+    col_sums = matrice.sum(axis=0)
+    matrice_norm = matrice / col_sums
 
-st.markdown("**✅ Poids locaux :**")
-df_poids_g1 = pd.DataFrame({
-    'Critère': ["C₁", "C₂", "C₃"],
-    'Poids Local': poids_local_g1
-})
-st.dataframe(df_poids_g1.style.format({'Poids Local': '{:.4f}'}))
+    # Calcul du vecteur des poids (moyenne des lignes)
+    poids = matrice_norm.mean(axis=1)
+    poids_norm = poids / poids.sum()
 
-st.markdown("---")
-
-# ==================== MATRICE 3: Comparaison C4, C5 (Composantes de B) ====================
-st.subheader("🔢 Matrice 3 : Comparaison des Critères de B (C₄, C₅)")
-st.markdown("**C₄: Supply capacity (kg/time), C₅: New product development rate (%)**")
-
-matrice_groupe2 = np.ones((2, 2))
-g2_12 = st.number_input("C₄ vs C₅", 0.111, 9.0, 1.0, 0.5, key="g2_12")
-matrice_groupe2[0, 1] = g2_12
-matrice_groupe2[1, 0] = 1 / g2_12
-
-# Afficher la matrice
-st.markdown("**Matrice de comparaison par paires (Groupe B) :**")
-df_mat_g2 = pd.DataFrame(matrice_groupe2, 
-                         index=["C₄", "C₅"], 
-                         columns=["C₄", "C₅"])
-st.dataframe(df_mat_g2.style.format("{:.3f}"), use_container_width=True)
-
-poids_local_g2 = (matrice_groupe2 / matrice_groupe2.sum(axis=0)).mean(axis=1)
-
-st.markdown("**✅ Poids locaux :**")
-df_poids_g2 = pd.DataFrame({
-    'Critère': ["C₄", "C₅"],
-    'Poids Local': poids_local_g2
-})
-st.dataframe(df_poids_g2.style.format({'Poids Local': '{:.4f}'}))
-
-st.markdown("---")
-
-# ==================== MATRICE 4: Comparaison C6, C7 (Composantes de C) ====================
-st.subheader("🔢 Matrice 4 : Comparaison des Critères de C (C₆, C₇)")
-st.markdown("**C₆: Delivery time (days), C₇: Delivery on time ratio (%)**")
-
-matrice_groupe3 = np.ones((2, 2))
-g3_12 = st.number_input("C₆ vs C₇", 0.111, 9.0, 1.0, 0.5, key="g3_12")
-matrice_groupe3[0, 1] = g3_12
-matrice_groupe3[1, 0] = 1 / g3_12
-
-# Afficher la matrice
-st.markdown("**Matrice de comparaison par paires (Groupe C) :**")
-df_mat_g3 = pd.DataFrame(matrice_groupe3, 
-                         index=["C₆", "C₇"], 
-                         columns=["C₆", "C₇"])
-st.dataframe(df_mat_g3.style.format("{:.3f}"), use_container_width=True)
-
-poids_local_g3 = (matrice_groupe3 / matrice_groupe3.sum(axis=0)).mean(axis=1)
-
-st.markdown("**✅ Poids locaux :**")
-df_poids_g3 = pd.DataFrame({
-    'Critère': ["C₆", "C₇"],
-    'Poids Local': poids_local_g3
-})
-st.dataframe(df_poids_g3.style.format({'Poids Local': '{:.4f}'}))
-
-st.markdown("---")
-
-# Calcul des poids globaux (hiérarchiques)
-poids_ahp = np.zeros(n_criteres)
-if n_criteres >= 7:
-    poids_ahp[0:3] = poids_local_g1 * poids_facettes[0]  # C1, C2, C3
-    poids_ahp[3:5] = poids_local_g2 * poids_facettes[1]  # C4, C5
-    poids_ahp[5:7] = poids_local_g3 * poids_facettes[2]  # C6, C7
-    if n_criteres > 7:
-        poids_ahp[7:] = (1 - poids_ahp[:7].sum()) / (n_criteres - 7)
-else:
-    poids_ahp = np.ones(n_criteres) / n_criteres
-
-st.markdown("---")
-
-# Affichage du résumé des poids AHP hiérarchiques
-st.subheader("📊 Résumé des Poids AHP Hiérarchiques")
-
-if n_criteres == 7:
-    df_poids_ahp = pd.DataFrame({
-        'Critère': criteres,
-        'Facette': ['Product satisfaction']*3 + ['Supply innovation']*2 + ['Service level']*2,
-        'Poids Local': list(poids_local_g1) + list(poids_local_g2) + list(poids_local_g3),
-        'Poids Global (w_h)': poids_ahp
+    # Résultats
+    df_result = pd.DataFrame({
+        "Critère": criteres,
+        "Poids AHP": np.round(poids_norm, 4)
     })
-    st.dataframe(df_poids_ahp.style.format({
-        'Poids Local': '{:.4f}',
-        'Poids Global (w_h)': '{:.4f}'
-    }), use_container_width=True)
-    st.info("💡 **Poids Global** = Poids Local × Poids de la Facette")
-else:
-    df_poids_ahp = pd.DataFrame({
-        'Critère': criteres,
-        'Poids AHP (w_h)': poids_ahp
-    })
-    st.dataframe(df_poids_ahp.style.format({'Poids AHP (w_h)': '{:.4f}'}), use_container_width=True)
 
+    st.success("✅ Calcul terminé avec succès !")
+    st.write("### Résultats des poids AHP :")
+    st.dataframe(df_result, use_container_width=True)
 # ==================== SECTION 3: CALCULS ====================
 if st.button("🚀 Calculer les résultats", type="primary"):
     
